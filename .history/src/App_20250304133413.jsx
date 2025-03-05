@@ -140,7 +140,6 @@ function App() {
   const [, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [transcription, setTranscription] = useState("");
-  const [translation, setTranslation] = useState("");
   const [permissionGranted, setPermissionGranted] = useState(null);
 
   const mediaRecorderRef = useRef(null);
@@ -210,19 +209,34 @@ function App() {
   const toggleRecording = () => {
     isRecording ? stopRecording() : startRecording();
   };
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+  function interleave(audioBuffer) {
+    const inputL = audioBuffer.getChannelData(0);
+    const inputR = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : inputL;
+    const length = inputL.length + inputR.length;
+    const result = new Float32Array(length);
+    for (let i = 0, j = 0; i < inputL.length; i++, j += 2) {
+        result[j] = inputL[i];
+        result[j + 1] = inputR[i];
+    }
+    return result;
+}
   function encodeWav(audioBuffer) {
     const numOfChan = audioBuffer.numberOfChannels;
     const sampleRate = audioBuffer.sampleRate;
-    const dataSize = audioBuffer.length * numOfChan * 2;
-    const length = dataSize + 44;
+    const length = audioBuffer.length * numOfChan * 2 + 44;
     const buffer = new ArrayBuffer(length);
     const view = new DataView(buffer);
 
-    // Écriture du header WAV
-    writeString(view, 0, "RIFF");
-    view.setUint32(4, length - 8, true);
-    writeString(view, 8, "WAVE");
-    writeString(view, 12, "fmt ");
+    // Header WAV
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + audioBuffer.length * numOfChan * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
     view.setUint32(16, 16, true);
     view.setUint16(20, 1, true);
     view.setUint16(22, numOfChan, true);
@@ -230,41 +244,18 @@ function App() {
     view.setUint32(28, sampleRate * numOfChan * 2, true);
     view.setUint16(32, numOfChan * 2, true);
     view.setUint16(34, 16, true);
-    writeString(view, 36, "data");
-    view.setUint32(40, dataSize, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, audioBuffer.length * numOfChan * 2, true);
 
-    // Convertir l'audio en PCM intercalé
+    // Data
     const interleaved = interleave(audioBuffer);
-
-    let offset = 44; // ✅ Initialisation correcte
-    for (let i = 0; i < interleaved.length; i++) {
-      view.setInt16(offset, interleaved[i] * 0x7fff, true);
-      offset += 2;
+    const data = new DataView(buffer, 44);
+    for (let i = 0; i < interleaved.length; i++, offset += 2) {
+        data.setInt16(offset, interleaved[i] * 0x7FFF, true);
     }
 
-    return new Blob([buffer], { type: "audio/wav" });
-  }
-
-  function writeString(view, offset, string) {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  }
-
-  function interleave(audioBuffer) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const length = audioBuffer.length * numOfChan;
-    const result = new Float32Array(length);
-
-    for (let i = 0, j = 0; i < audioBuffer.length; i++) {
-      for (let ch = 0; ch < numOfChan; ch++, j++) {
-        result[j] = audioBuffer.getChannelData(ch)[i];
-      }
-    }
-
-    return result;
-  }
-
+    return new Blob([buffer], { type: 'audio/wav' });
+}
   async function blobToWav(blob) {
     const arrayBuffer = await blob.arrayBuffer();
     const audioContext = new AudioContext();
@@ -281,13 +272,10 @@ function App() {
     formData.append("file", audioWav, "audio.wav");
 
     try {
-      const response = await fetch(
-        "https://multilingualvoice.vercel.app/transcribe/",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch("http://127.0.0.1:8000/transcribe/", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(
@@ -298,7 +286,6 @@ function App() {
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);
@@ -330,7 +317,7 @@ function App() {
               <strong>Transcription:</strong> {transcription}
             </p>
             <p>
-              <strong>Translation:</strong> {translation}
+              <strong>Traduction:</strong> {transcription}
             </p>
           </>
         ) : (

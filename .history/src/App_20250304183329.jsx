@@ -298,7 +298,6 @@ function App() {
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);
@@ -330,7 +329,7 @@ function App() {
               <strong>Transcription:</strong> {transcription}
             </p>
             <p>
-              <strong>Translation:</strong> {translation}
+              <strong>Translation:</strong> {transcription}
             </p>
           </>
         ) : (

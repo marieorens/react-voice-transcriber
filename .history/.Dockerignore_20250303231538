@@ -1,0 +1,16 @@
+# Ignorer les dépendances installées
+node_modules
+
+# Ignorer les fichiers de build locaux
+dist
+.vite
+.cache
+
+# Ignorer les fichiers de configuration et environnement
+.env
+.env.local
+.DS_Store
+
+# Ignorer les fichiers liés à Git
+.git
+.gitignore

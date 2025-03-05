@@ -140,7 +140,7 @@ function App() {
   const [, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [transcription, setTranscription] = useState("");
-  const [translation, setTranslation] = useState("");
+  const [transla, setTranscription] = useState("");
   const [permissionGranted, setPermissionGranted] = useState(null);
 
   const mediaRecorderRef = useRef(null);
@@ -298,7 +298,6 @@ function App() {
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);
@@ -330,7 +329,7 @@ function App() {
               <strong>Transcription:</strong> {transcription}
             </p>
             <p>
-              <strong>Translation:</strong> {translation}
+              <strong>Traduction:</strong> {transcription}
             </p>
           </>
         ) : (

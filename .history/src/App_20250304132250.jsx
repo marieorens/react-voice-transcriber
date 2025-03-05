@@ -140,7 +140,6 @@ function App() {
   const [, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [transcription, setTranscription] = useState("");
-  const [translation, setTranslation] = useState("");
   const [permissionGranted, setPermissionGranted] = useState(null);
 
   const mediaRecorderRef = useRef(null);
@@ -210,79 +209,15 @@ function App() {
   const toggleRecording = () => {
     isRecording ? stopRecording() : startRecording();
   };
-  function encodeWav(audioBuffer) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const dataSize = audioBuffer.length * numOfChan * 2;
-    const length = dataSize + 44;
-    const buffer = new ArrayBuffer(length);
-    const view = new DataView(buffer);
 
-    // Écriture du header WAV
-    writeString(view, 0, "RIFF");
-    view.setUint32(4, length - 8, true);
-    writeString(view, 8, "WAVE");
-    writeString(view, 12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numOfChan, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * numOfChan * 2, true);
-    view.setUint16(32, numOfChan * 2, true);
-    view.setUint16(34, 16, true);
-    writeString(view, 36, "data");
-    view.setUint32(40, dataSize, true);
-
-    // Convertir l'audio en PCM intercalé
-    const interleaved = interleave(audioBuffer);
-
-    let offset = 44; // ✅ Initialisation correcte
-    for (let i = 0; i < interleaved.length; i++) {
-      view.setInt16(offset, interleaved[i] * 0x7fff, true);
-      offset += 2;
-    }
-
-    return new Blob([buffer], { type: "audio/wav" });
-  }
-
-  function writeString(view, offset, string) {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  }
-
-  function interleave(audioBuffer) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const length = audioBuffer.length * numOfChan;
-    const result = new Float32Array(length);
-
-    for (let i = 0, j = 0; i < audioBuffer.length; i++) {
-      for (let ch = 0; ch < numOfChan; ch++, j++) {
-        result[j] = audioBuffer.getChannelData(ch)[i];
-      }
-    }
-
-    return result;
-  }
-
-  async function blobToWav(blob) {
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioContext = new AudioContext();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Convertir en WAV
-    const wavBlob = encodeWav(audioBuffer);
-    return wavBlob;
-  }
   const sendAudioToAPI = async (audioBlob) => {
     console.log("Sending audio to API...");
     const formData = new FormData();
-    const audioWav = await blobToWav(audioBlob);
-    formData.append("file", audioWav, "audio.wav");
+    formData.append("file", audioBlob, "audio.wav");
 
     try {
       const response = await fetch(
-        "https://multilingualvoice.vercel.app/transcribe/",
+        "https://http://127.0.0.1:8000/transcribe/",
         {
           method: "POST",
           body: formData,
@@ -298,7 +233,6 @@ function App() {
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);
@@ -330,7 +264,7 @@ function App() {
               <strong>Transcription:</strong> {transcription}
             </p>
             <p>
-              <strong>Translation:</strong> {translation}
+              <strong>Traduction:</strong> {transcription}
             </p>
           </>
         ) : (

@@ -298,7 +298,7 @@ function App() {
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
+      setTranslation
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);

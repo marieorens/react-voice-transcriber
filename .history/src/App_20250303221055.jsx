@@ -1,6 +1,6 @@
-import React, { useRef, useState } from "react";
-import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
+import React, { useState, useRef } from "react";
 import styled, { keyframes } from "styled-components";
+import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 
 const Container = styled.div`
   display: flex;
@@ -55,7 +55,7 @@ const oscillation = keyframes`
   }
 `;
 
-const MicrophoneButton = styled.div.attrs((props) => ({
+const MicrophoneButton = styled.div.attrs(props => ({
   "data-is-recording": props.isRecording ? "true" : "false",
 }))`
   width: 120px;
@@ -95,8 +95,7 @@ const MicrophoneButton = styled.div.attrs((props) => ({
     height: 10px;
     background-color: #ff5733;
     border-radius: 5px;
-    animation: ${(props) => (props.isRecording ? oscillation : "none")} 0.5s
-      infinite;
+    animation: ${(props) => (props.isRecording ? oscillation : "none")} 0.5s infinite;
   }
 `;
 
@@ -137,10 +136,9 @@ const TranscriptionSection = styled.section`
 
 function App() {
   const [isRecording, setIsRecording] = useState(false);
-  const [, setAudioBlob] = useState(null);
+  const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [transcription, setTranscription] = useState("");
-  const [translation, setTranslation] = useState("");
   const [permissionGranted, setPermissionGranted] = useState(null);
 
   const mediaRecorderRef = useRef(null);
@@ -153,8 +151,7 @@ function App() {
     if (permissionGranted === null) {
       requestMicrophonePermission();
     } else {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
+      navigator.mediaDevices.getUserMedia({ audio: true })
         .then((stream) => {
           startAudioRecording(stream);
         })
@@ -168,8 +165,7 @@ function App() {
 
   const requestMicrophonePermission = () => {
     console.log("Requesting microphone permission...");
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
+    navigator.mediaDevices.getUserMedia({ audio: true })
       .then((stream) => {
         setPermissionGranted(true);
         console.log("Microphone permission granted.");
@@ -210,95 +206,25 @@ function App() {
   const toggleRecording = () => {
     isRecording ? stopRecording() : startRecording();
   };
-  function encodeWav(audioBuffer) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const dataSize = audioBuffer.length * numOfChan * 2;
-    const length = dataSize + 44;
-    const buffer = new ArrayBuffer(length);
-    const view = new DataView(buffer);
 
-    // Écriture du header WAV
-    writeString(view, 0, "RIFF");
-    view.setUint32(4, length - 8, true);
-    writeString(view, 8, "WAVE");
-    writeString(view, 12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numOfChan, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * numOfChan * 2, true);
-    view.setUint16(32, numOfChan * 2, true);
-    view.setUint16(34, 16, true);
-    writeString(view, 36, "data");
-    view.setUint32(40, dataSize, true);
-
-    // Convertir l'audio en PCM intercalé
-    const interleaved = interleave(audioBuffer);
-
-    let offset = 44; // ✅ Initialisation correcte
-    for (let i = 0; i < interleaved.length; i++) {
-      view.setInt16(offset, interleaved[i] * 0x7fff, true);
-      offset += 2;
-    }
-
-    return new Blob([buffer], { type: "audio/wav" });
-  }
-
-  function writeString(view, offset, string) {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  }
-
-  function interleave(audioBuffer) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const length = audioBuffer.length * numOfChan;
-    const result = new Float32Array(length);
-
-    for (let i = 0, j = 0; i < audioBuffer.length; i++) {
-      for (let ch = 0; ch < numOfChan; ch++, j++) {
-        result[j] = audioBuffer.getChannelData(ch)[i];
-      }
-    }
-
-    return result;
-  }
-
-  async function blobToWav(blob) {
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioContext = new AudioContext();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Convertir en WAV
-    const wavBlob = encodeWav(audioBuffer);
-    return wavBlob;
-  }
   const sendAudioToAPI = async (audioBlob) => {
     console.log("Sending audio to API...");
     const formData = new FormData();
-    const audioWav = await blobToWav(audioBlob);
-    formData.append("file", audioWav, "audio.wav");
+    formData.append("file", audioBlob, "audio.wav");
 
     try {
-      const response = await fetch(
-        "https://multilingualvoice.vercel.app/transcribe/",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch("http://localhost:8000/transcribe/", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to transcribe the audio: ${response.statusText}`
-        );
+        throw new Error(`Failed to transcribe the audio: ${response.statusText}`);
       }
 
       const result = await response.json();
       console.log("API response received:", result);
       setTranscription(result.transcription);
-      setTranslation(result.translation);
       console.log("Transcription:", result.transcription);
     } catch (error) {
       console.error("Error during API call:", error);
@@ -326,12 +252,8 @@ function App() {
       <TranscriptionSection>
         {transcription ? (
           <>
-            <p>
-              <strong>Transcription:</strong> {transcription}
-            </p>
-            <p>
-              <strong>Translation:</strong> {translation}
-            </p>
+            <p><strong>Transcription:</strong> {transcription}</p>
+            <p><strong>Traduction:</strong> {transcription}</p>
           </>
         ) : (
           <p>Enregistrement en cours... Patientez s'il vous plaît.</p>
